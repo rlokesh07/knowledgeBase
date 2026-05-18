@@ -1,0 +1,16 @@
+---
+description: Ask for explicit permission before modifying any files
+alwaysApply: true
+---
+
+# Permission before edits
+
+Before changing the codebase in any way (creating, editing, or deleting files), you must:
+
+1. **Briefly describe** what you plan to change (which files, what you will do).
+2. **Wait** for the user’s explicit go-ahead (e.g. “yes”, “go ahead”, “do it”, or approval of the plan).
+3. **Only then** use tools that write to disk (apply patches, create files, delete files, etc.).
+
+If the user has already clearly approved that specific change in the same turn, you may proceed without asking again for that scoped work.
+
+Do not treat silence or a vague question as approval to edit.

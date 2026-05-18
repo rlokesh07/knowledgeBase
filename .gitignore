@@ -1,0 +1,41 @@
+# Secrets (keep .env.example in repo)
+.env
+.env.local
+.env.*.local
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Local knowledge base / generated artifacts
+database.pkl
+chunks/
+
+# Input documents (remove this line if you want notes tracked)
+notes/
+
+# Tools / caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Editors / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
