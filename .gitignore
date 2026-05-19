@@ -21,6 +21,7 @@ build/
 
 # Local knowledge base / generated artifacts
 database.pkl
+indexed_sources.json
 chunks/
 
 # Input documents (remove this line if you want notes tracked)
