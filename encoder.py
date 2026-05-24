@@ -5,6 +5,8 @@ from pathlib import Path
 
 import requests
 
+from pdf_split import ocr_max_file_bytes, split_pdf_by_size
+
 
 class Encoder:
     """Mistral Document AI on Azure (serverless) — follows Microsoft curl samples."""
@@ -15,12 +17,39 @@ class Encoder:
         self.model = model
 
     def encodeDocument(self, file):
+        path = Path(file)
+        max_bytes = ocr_max_file_bytes()
+        parts, temp_paths = split_pdf_by_size(path, max_bytes)
+
+        if len(parts) > 1:
+            print(
+                f"  PDF exceeds {max_bytes / (1024 * 1024):.0f} MB OCR limit "
+                f"({path.stat().st_size / (1024 * 1024):.1f} MB) — "
+                f"splitting into {len(parts)} part(s): {path.name}",
+                flush=True,
+            )
+
+        try:
+            markdown_files: list[str] = []
+            for i, part in enumerate(parts, start=1):
+                if len(parts) > 1:
+                    print(
+                        f"  OCR part {i}/{len(parts)} "
+                        f"({part.stat().st_size / (1024 * 1024):.1f} MB)…",
+                        flush=True,
+                    )
+                markdown_files.extend(self._encode_single_document(part))
+            return markdown_files
+        finally:
+            for tmp in temp_paths:
+                tmp.unlink(missing_ok=True)
+
+    def _encode_single_document(self, path: Path) -> list[str]:
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.apiKey}",
         }
 
-        path = Path(file)
         mime_type, _ = mimetypes.guess_type(str(path))
         if not mime_type:
             mime_type = "application/octet-stream"
@@ -75,6 +104,18 @@ class Encoder:
                 f"Server detail: {detail_msg}"
             )
 
+        if response.status_code == 400:
+            detail = _ocr_error_detail(response)
+            if "too large" in detail.lower():
+                raise SystemExit(
+                    f"Mistral OCR rejected {path.name}: file too large. "
+                    f"Limit is ~30 MB; this part is {path.stat().st_size / (1024 * 1024):.1f} MB.\n"
+                    f"Server detail: {detail[:600]}"
+                )
+            raise SystemExit(
+                f"Mistral OCR HTTP 400 for {path.name}.\nServer detail: {detail[:800]}"
+            )
+
         response.raise_for_status()
 
         raw_len = len(response.content or b"")
@@ -108,3 +149,20 @@ class Encoder:
     def encodeDocuments(self, file_path):
         """Same as encodeDocument; name matches callers that process one file at a time."""
         return self.encodeDocument(file_path)
+
+
+def _ocr_error_detail(response: requests.Response) -> str:
+    try:
+        blob = response.json()
+    except requests.exceptions.JSONDecodeError:
+        return (response.text or "")[:800]
+
+    err = blob.get("error") or blob
+    msg = err.get("message", "") if isinstance(err, dict) else str(err)
+    if isinstance(msg, str) and msg.startswith("{"):
+        try:
+            inner = json.loads(msg)
+            return str(inner.get("message") or inner)
+        except json.JSONDecodeError:
+            pass
+    return str(msg or blob)[:800]
