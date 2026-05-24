@@ -1,0 +1,25 @@
+instruments:
+  - id: usd_index
+    symbol: DX-Y.NYB
+    name: US Dollar Index
+    asset_class: fx
+  - id: wti_crude
+    symbol: CL=F
+    name: WTI crude oil
+    asset_class: commodity
+  - id: brent_crude
+    symbol: BZ=F
+    name: Brent crude oil
+    asset_class: commodity
+  - id: gold
+    symbol: GC=F
+    name: Gold futures
+    asset_class: commodity
+  - id: sp500
+    symbol: ^GSPC
+    name: S&P 500
+    asset_class: index
+  - id: us10y
+    symbol: ^TNX
+    name: US 10-year Treasury yield
+    asset_class: bond

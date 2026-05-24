@@ -12,7 +12,7 @@ class Chunk:
 
 
 class Node:
-    """One K-means cluster: a short topic label and all member chunk UUIDs."""
+    """A distinct object/entity node in the knowledge graph."""
 
     def __init__(
         self,
@@ -21,23 +21,46 @@ class Node:
         chunk_uuids: list[str],
         cluster_id: int = -1,
         centroid: list[float] | None = None,
+        object_type: str = "",
+        description: str = "",
+        state: str = "",
+        properties: dict | None = None,
+        tags: list[str] | None = None,
+        disabled: bool = False,
     ):
         self.uuid = uuid
         self.label = label
         self.chunk_uuids = chunk_uuids
         self.cluster_id = cluster_id
         self.centroid = centroid
+        self.object_type = object_type
+        self.description = description
+        self.state = state
+        self.properties = properties or {}
+        self.tags = tags or []
+        self.disabled = disabled
 
 
 class Edge:
-    """Undirected topic–topic link (uuid1 < uuid2 lexicographically)."""
+    """Directed typed link between two object nodes (uuid1 → uuid2)."""
 
-    def __init__(self, uuid: str, uuid1: str, uuid2: str, relationship: str, weight: float = 1.0):
+    def __init__(
+        self,
+        uuid: str,
+        uuid1: str,
+        uuid2: str,
+        relationship: str,
+        weight: float = 1.0,
+        relationship_type: str = "",
+        mechanism: str = "",
+    ):
         self.uuid = uuid
         self.uuid1 = uuid1
         self.uuid2 = uuid2
         self.relationship = relationship
         self.weight = weight
+        self.relationship_type = relationship_type
+        self.mechanism = mechanism
 
 
 class GraphStore:
@@ -66,6 +89,32 @@ class GraphStore:
                 "Remove the file and re-run indexing (old graph format is not supported)."
             ) from exc
         self.edges = data.get("edges", [])
+        # Back-fill new Edge fields that may be absent in older pickled objects.
+        for e in self.edges:
+            if not hasattr(e, "relationship_type"):
+                e.relationship_type = ""
+            if not hasattr(e, "mechanism"):
+                e.mechanism = ""
+        # Back-fill new Node fields that may be absent in older pickled objects.
+        for n in self.nodes:
+            if not hasattr(n, "object_type"):
+                n.object_type = ""
+            if not hasattr(n, "description"):
+                n.description = ""
+            if not hasattr(n, "state"):
+                n.state = ""
+            if not hasattr(n, "properties"):
+                n.properties = {}
+            if not hasattr(n, "tags"):
+                n.tags = []
+            if not hasattr(n, "disabled"):
+                n.disabled = False
+        try:
+            import node_tags
+
+            node_tags.sync_disabled_state(self)
+        except ImportError:
+            pass
 
     def chunk_cluster_ids(self) -> dict[str, int]:
         """Map chunk uuid → cluster id (topics only — unassigned chunks are omitted)."""
